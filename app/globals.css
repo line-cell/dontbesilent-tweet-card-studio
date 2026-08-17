@@ -156,7 +156,9 @@ button { color: inherit; }
 .tweet-card.movable-card { position: absolute; cursor: grab; transform-origin: center; }
 .tweet-card.movable-card:active { cursor: grabbing; }
 .tweet-header { display: grid; grid-template-columns: 42px minmax(0,1fr) auto; gap: 11px; align-items: start; }
-.tweet-header > img { width: 42px; height: 42px; border-radius: 50%; display: block; object-fit: cover; }
+.tweet-avatar { width: 42px; height: 42px; border-radius: 50%; overflow: hidden; background: #000; }
+.tweet-avatar img { width: 100%; height: 100%; display: block; object-fit: cover; transform: scale(1.12); }
+.theme-light .tweet-avatar { background: #fff; }
 .tweet-identity { min-width: 0; padding-top: 1px; }
 .tweet-identity > span { display: flex; align-items: center; gap: 4px; min-width: 0; }
 .tweet-identity strong { overflow: hidden; white-space: nowrap; text-overflow: ellipsis; font-size: 18px; line-height: 21px; font-weight: 800; }

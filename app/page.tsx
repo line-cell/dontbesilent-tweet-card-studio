@@ -549,7 +549,9 @@ const TweetCard = forwardRef(function TweetCard({
       onPointerCancel={onPointerCancel}
     >
       <header className="tweet-header">
-        <img src="/avatar.png" alt="dontbesilent 头像" />
+        <div className="tweet-avatar">
+          <img src="/avatar.png" alt="dontbesilent 头像" />
+        </div>
         <div className="tweet-identity">
           <span><strong>dontbesilent</strong><VerifiedBadge /></span>
           <small>@dontbesilent · {displayDate(post.date)}</small>

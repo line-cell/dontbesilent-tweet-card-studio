@@ -91,6 +91,16 @@ const FALLBACK_POSTS: Post[] = [
   },
 ];
 
+const TRAVEL_BACKGROUNDS: Background[] = Array.from({ length: 110 }, (_, index) => {
+  const number = String(index + 1).padStart(3, "0");
+  return {
+    id: `travel-${number}`,
+    name: `旅行素材 ${number}`,
+    src: `/backgrounds/travel-${number}.jpeg`,
+    keywords: "旅行 城市 山海 雪景 汽车 风景 建筑",
+  };
+});
+
 const BACKGROUNDS: Background[] = [
   { id: "misty", name: "雾谷晨光", src: "/backgrounds/misty-valley.jpeg", keywords: "山谷 自然 清晨 雾" },
   { id: "mountain", name: "山野远景", src: "/backgrounds/mountain-valley.jpeg", keywords: "山野 自然 蓝天" },
@@ -100,6 +110,7 @@ const BACKGROUNDS: Background[] = [
   { id: "peak", name: "群山云海", src: "/backgrounds/cloud-mountain.jpeg", keywords: "群山 云海 自然" },
   { id: "coast", name: "海岸公路", src: "/backgrounds/coast-road.jpeg", keywords: "海岸 公路 旅行" },
   { id: "forest", name: "森林微光", src: "/backgrounds/forest-light.jpeg", keywords: "森林 自然 绿色" },
+  ...TRAVEL_BACKGROUNDS,
 ];
 
 const CATEGORIES: Category[] = [
@@ -543,7 +554,11 @@ export default function Home() {
 
           {outputMode === "douyin" && (
             <section className="control-section background-section">
-              <SectionHeading number="04" title="选择背景" subtitle="内置图库、本地上传、网络图片都能用" />
+              <SectionHeading
+                number="04"
+                title="选择背景"
+                subtitle={`内置 ${BACKGROUNDS.length} 张图库，也支持本地上传和网络图片`}
+              />
               <label className="search-box full">
                 <Search size={17} />
                 <input value={backgroundQuery} onChange={(event) => setBackgroundQuery(event.target.value)} placeholder="搜：城市、夜景、山海" />
@@ -551,7 +566,7 @@ export default function Home() {
               <div className="background-grid">
                 {visibleBackgrounds.map((background) => (
                   <button key={background.id} className={selectedBackground.id === background.id && !customBackground ? "selected" : ""} onClick={() => { setSelectedBackground(background); setCustomBackground(null); }}>
-                    <img src={background.src} alt={background.name} />
+                    <img src={background.src} alt={background.name} loading="lazy" decoding="async" />
                     <span>{background.name}</span>
                   </button>
                 ))}

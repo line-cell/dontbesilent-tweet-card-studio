@@ -25,6 +25,10 @@ test("all built-in visual assets are present", () => {
     "backgrounds/cloud-mountain.jpeg",
     "backgrounds/coast-road.jpeg",
     "backgrounds/forest-light.jpeg",
+    ...Array.from(
+      { length: 110 },
+      (_, index) => `backgrounds/travel-${String(index + 1).padStart(3, "0")}.jpeg`,
+    ),
   ];
 
   for (const asset of assets) {

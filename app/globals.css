@@ -182,11 +182,11 @@ button { color: inherit; }
 .tweet-body p:last-child { margin-bottom: 0; }
 .tweet-time { margin-top: 22px; color: #71767b; font-size: 13px; line-height: 18px; }
 .tweet-time strong { color: inherit; font-weight: 700; }
-.tweet-metrics { min-height: 42px; margin-top: 14px; padding-top: 13px; border-top: 1px solid #2f3336; color: #71767b; display: grid; grid-template-columns: repeat(6, 1fr); align-items: center; font-size: 11px; }
+.tweet-metrics { min-height: 42px; margin-top: 14px; padding-top: 13px; border-top: 1px solid #2f3336; color: #71767b; display: grid; grid-template-columns: repeat(5, minmax(0, 1fr)); align-items: center; font-size: 11px; }
 .theme-light .tweet-metrics { border-top-color: #eff3f4; color: #536471; }
-.tweet-metrics span { min-width: 0; display: inline-flex; align-items: center; gap: 5px; white-space: nowrap; }
+.tweet-metrics span { min-width: 0; display: inline-flex; align-items: center; justify-content: center; gap: 5px; white-space: nowrap; }
 .tweet-metrics svg { width: 17px; height: 17px; stroke-width: 2; flex: 0 0 auto; }
-.tweet-metrics .grok-action { color: #7856ff; justify-content: center; }
+.tweet-metrics span:first-child { justify-content: flex-start; }
 .tweet-metrics .share-action { justify-content: flex-end; }
 
 .preview-footer { min-height: 72px; padding: 12px 18px; border-top: 1px solid var(--line); display: flex; align-items: center; justify-content: space-between; gap: 16px; }

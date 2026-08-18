@@ -20,7 +20,6 @@ import {
   Search,
   Share2,
   Shuffle,
-  Sparkles,
   Sun,
   Upload,
 } from "lucide-react";
@@ -715,7 +714,6 @@ const TweetCard = forwardRef(function TweetCard({
         <span><MessageCircle />{metrics.comments}</span>
         <span><Repeat2 />{metrics.reposts}</span>
         <span><Heart />{metrics.likes}</span>
-        <span className="grok-action" aria-label="Grok"><Sparkles /></span>
         <span><Bookmark />{metrics.bookmarks}</span>
         <span className="share-action" aria-label="分享"><Share2 /></span>
       </footer>

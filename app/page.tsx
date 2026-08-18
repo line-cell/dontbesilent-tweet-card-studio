@@ -1,5 +1,7 @@
 "use client";
 
+/* eslint-disable @next/next/no-img-element */
+
 import {
   Bookmark,
   Check,
@@ -61,6 +63,12 @@ type Background = {
   keywords: string;
 };
 
+type Category = {
+  id: string;
+  label: string;
+  topics: string[];
+};
+
 const FALLBACK_POSTS: Post[] = [
   {
     id: "2032893859311792148",
@@ -90,6 +98,36 @@ const BACKGROUNDS: Background[] = [
   { id: "peak", name: "群山云海", src: "/backgrounds/cloud-mountain.jpeg", keywords: "群山 云海 自然" },
   { id: "coast", name: "海岸公路", src: "/backgrounds/coast-road.jpeg", keywords: "海岸 公路 旅行" },
   { id: "forest", name: "森林微光", src: "/backgrounds/forest-light.jpeg", keywords: "森林 自然 绿色" },
+];
+
+const CATEGORIES: Category[] = [
+  { id: "all", label: "全部", topics: [] },
+  { id: "business", label: "商业产品", topics: ["商业与产品", "产品与商业"] },
+  { id: "ai", label: "AI 工具", topics: ["AI 与工具"] },
+  { id: "content", label: "内容传播", topics: ["内容与传播"] },
+  { id: "thinking", label: "认知思考", topics: ["认知与语言", "哲学与认知"] },
+  { id: "action", label: "行动成长", topics: ["行动与心理", "学习与教育", "个人经历"] },
+  { id: "market", label: "市场社会", topics: ["市场与社会"] },
+];
+
+const CAPTION_LEADS = [
+  "有些答案并不复杂，真正难的是愿不愿意面对。",
+  "把这件事想清楚，很多动作自然就简单了。",
+  "今天留下一条值得反复看的思考。",
+  "人与人真正拉开差距的，往往不是信息本身。",
+  "换一个视角看，原本纠结的问题会清楚很多。",
+  "越是看起来理所当然的事，越值得重新想一遍。",
+  "这段话不一定让人舒服，但可能很有用。",
+  "很多问题不是没有答案，而是答案不符合期待。",
+];
+
+const CAPTION_ENDINGS = [
+  "你怎么看？",
+  "先记下来，过一段时间再回来看看。",
+  "分享给同样在认真做事的人。",
+  "真正做过之后，会有不一样的理解。",
+  "评论区聊聊你的判断。",
+  "知易行难，答案最终还在行动里。",
 ];
 
 function XLogo({ size = 20 }: { size?: number }) {
@@ -161,17 +199,80 @@ function safeFileName(post: Post) {
   return `dontbesilent-${post.date}-${post.id.slice(-6)}.png`;
 }
 
-function makeCaption(post: Post) {
-  const firstLine = post.text.split(/\n+/).find(Boolean)?.trim() || post.topic;
-  const lead = firstLine.length > 42 ? `${firstLine.slice(0, 42)}……` : firstLine;
+function makeCaption(post: Post, variant = 0) {
+  const lead = CAPTION_LEADS[seededNumber(`${post.id}:caption-lead:${variant}`, 0, CAPTION_LEADS.length - 1)];
+  const ending = CAPTION_ENDINGS[seededNumber(`${post.id}:caption-ending:${variant}`, 0, CAPTION_ENDINGS.length - 1)];
   const tags = [...new Set([post.topic, ...post.tags])].slice(0, 3);
-  return `${lead}\n\n${tags.map((tag) => `#${tag.replace(/\s+/g, "")}`).join(" ")}`;
+  return `${lead}\n\n${ending}\n\n${tags.map((tag) => `#${tag.replace(/\s+/g, "")}`).join(" ")}`;
+}
+
+function makeRandomCaption(post: Post) {
+  return makeCaption(post, Date.now() + Math.random());
+}
+
+function makeDifferentCaption(post: Post, current: string) {
+  const seed = Date.now();
+  for (let offset = 0; offset < 12; offset += 1) {
+    const candidate = makeCaption(post, seed + offset);
+    if (candidate !== current) return candidate;
+  }
+  return makeCaption(post, seed + 37);
+}
+
+function postMatchesCategory(post: Post, categoryId: string) {
+  const category = CATEGORIES.find((item) => item.id === categoryId);
+  return !category || category.id === "all" || category.topics.includes(post.topic);
+}
+
+function blobToDataUrl(blob: Blob) {
+  return new Promise<string>((resolve, reject) => {
+    const reader = new FileReader();
+    reader.onload = () => resolve(String(reader.result));
+    reader.onerror = () => reject(reader.error);
+    reader.readAsDataURL(blob);
+  });
+}
+
+async function waitForImage(image: HTMLImageElement) {
+  if (!image.complete || image.naturalWidth === 0) {
+    await new Promise<void>((resolve, reject) => {
+      image.addEventListener("load", () => resolve(), { once: true });
+      image.addEventListener("error", () => reject(new Error("图片加载失败")), { once: true });
+    });
+  }
+  if (typeof image.decode === "function") await image.decode();
+}
+
+async function inlineImages(target: HTMLElement) {
+  const images = Array.from(target.querySelectorAll("img"));
+  const replacements: Array<{ image: HTMLImageElement; originalSrc: string; dataUrl: string }> = [];
+
+  for (const image of images) {
+    await waitForImage(image);
+    const originalSrc = image.getAttribute("src") || "";
+    const resolvedSrc = image.currentSrc || image.src;
+    if (!resolvedSrc || resolvedSrc.startsWith("data:")) continue;
+
+    const response = await fetch(resolvedSrc, { cache: "force-cache" });
+    if (!response.ok) throw new Error("图片读取失败");
+    const dataUrl = await blobToDataUrl(await response.blob());
+    replacements.push({ image, originalSrc, dataUrl });
+  }
+
+  for (const replacement of replacements) {
+    replacement.image.src = replacement.dataUrl;
+    await waitForImage(replacement.image);
+  }
+
+  return () => replacements.reverse().forEach(({ image, originalSrc }) => image.setAttribute("src", originalSrc));
 }
 
 export default function Home() {
   const [posts, setPosts] = useState<Post[]>(FALLBACK_POSTS);
   const [selectedId, setSelectedId] = useState(FALLBACK_POSTS[0].id);
   const [query, setQuery] = useState("");
+  const [activeCategory, setActiveCategory] = useState("all");
+  const [visibleLimit, setVisibleLimit] = useState(120);
   const [contentMode, setContentMode] = useState<"archive" | "edit">("archive");
   const [editedText, setEditedText] = useState(FALLBACK_POSTS[0].text);
   const [outputMode, setOutputMode] = useState<"douyin" | "card">("douyin");
@@ -184,6 +285,7 @@ export default function Home() {
   const [dim, setDim] = useState(16);
   const [cardScale, setCardScale] = useState(90);
   const [bodySize, setBodySize] = useState(18);
+  const [cardOpacity, setCardOpacity] = useState(100);
   const [position, setPosition] = useState({ x: 0, y: 0 });
   const [caption, setCaption] = useState(makeCaption(FALLBACK_POSTS[0]));
   const [copyLabel, setCopyLabel] = useState("一键复制");
@@ -204,7 +306,7 @@ export default function Home() {
         setPosts(data);
         setSelectedId(data[0].id);
         setEditedText(data[0].text);
-        setCaption(makeCaption(data[0]));
+        setCaption(makeRandomCaption(data[0]));
       })
       .catch(() => setLoadError("正在使用内置示例，刷新后可重试。"));
   }, []);
@@ -214,18 +316,29 @@ export default function Home() {
     [posts, selectedId],
   );
 
-  const visiblePosts = useMemo(() => {
+  const filteredPosts = useMemo(() => {
     const keyword = query.trim().toLowerCase();
-    const result = keyword
-      ? posts.filter((post) =>
-          [post.text, post.topic, post.tags.join(" "), post.date]
+    return posts.filter((post) => {
+      if (!postMatchesCategory(post, activeCategory)) return false;
+      return keyword
+        ? [post.text, post.topic, post.tags.join(" "), post.date]
             .join(" ")
             .toLowerCase()
-            .includes(keyword),
-        )
-      : posts;
-    return result.slice(0, 80);
-  }, [posts, query]);
+            .includes(keyword)
+        : true;
+    });
+  }, [posts, query, activeCategory]);
+
+  const categoryCounts = useMemo(() => Object.fromEntries(
+    CATEGORIES.map((category) => [
+      category.id,
+      category.id === "all" ? posts.length : posts.filter((post) => postMatchesCategory(post, category.id)).length,
+    ]),
+  ), [posts]);
+
+  const visiblePosts = useMemo(() => {
+    return filteredPosts.slice(0, visibleLimit);
+  }, [filteredPosts, visibleLimit]);
 
   const visibleBackgrounds = useMemo(() => {
     const keyword = backgroundQuery.trim().toLowerCase();
@@ -244,12 +357,13 @@ export default function Home() {
   function choosePost(post: Post) {
     setSelectedId(post.id);
     setEditedText(post.text);
-    setCaption(makeCaption(post));
+    setCaption(makeRandomCaption(post));
     setPosition({ x: 0, y: 0 });
   }
 
   function chooseRandomPost() {
-    const pool = posts.filter((post) => post.id !== selected.id && post.text.length <= 900);
+    const scopedPool = filteredPosts.filter((post) => post.id !== selected.id && post.text.length <= 900);
+    const pool = scopedPool.length > 0 ? scopedPool : posts.filter((post) => post.id !== selected.id && post.text.length <= 900);
     const next = pool[Math.floor(Math.random() * pool.length)] || posts[0];
     choosePost(next);
   }
@@ -302,12 +416,15 @@ export default function Home() {
     const target = outputMode === "douyin" ? artboardRef.current : tweetCardRef.current;
     if (!target) return;
     setIsDownloading(true);
+    let restoreImages = () => {};
     try {
+      await document.fonts.ready;
+      restoreImages = await inlineImages(target);
       const rect = target.getBoundingClientRect();
       const targetWidth = outputMode === "douyin" ? 1080 : Math.round(rect.width * 2);
       const pixelRatio = outputMode === "douyin" ? 1 : targetWidth / rect.width;
       const dataUrl = await toPng(target, {
-        cacheBust: true,
+        cacheBust: false,
         pixelRatio,
         canvasWidth: outputMode === "douyin" ? 1080 : undefined,
         canvasHeight: outputMode === "douyin" ? 1440 : undefined,
@@ -320,6 +437,7 @@ export default function Home() {
     } catch {
       setLoadError("图片导出失败。网络背景可能禁止下载，请改用内置图片或本地上传。 ");
     } finally {
+      restoreImages();
       setIsDownloading(false);
     }
   }
@@ -353,10 +471,22 @@ export default function Home() {
               <div className="search-row">
                 <label className="search-box">
                   <Search size={17} />
-                  <input value={query} onChange={(event) => setQuery(event.target.value)} placeholder="例如：创业、AI、自媒体" />
+                  <input value={query} onChange={(event) => { setQuery(event.target.value); setVisibleLimit(120); }} placeholder="例如：创业、AI、自媒体" />
                 </label>
                 <button className="icon-button" title="随机换一条" aria-label="随机换一条" onClick={chooseRandomPost}><Shuffle size={18} /></button>
               </div>
+              <div className="category-tabs" role="group" aria-label="推文分类">
+                {CATEGORIES.map((category) => (
+                  <button
+                    key={category.id}
+                    className={activeCategory === category.id ? "active" : ""}
+                    onClick={() => { setActiveCategory(category.id); setVisibleLimit(120); }}
+                  >
+                    {category.label}<small>{categoryCounts[category.id] || 0}</small>
+                  </button>
+                ))}
+              </div>
+              <p className="filter-summary">当前筛选 {filteredPosts.length.toLocaleString("zh-CN")} 条，随机按钮只会从当前结果中抽取</p>
               <div className="post-list" role="listbox" aria-label="推文素材库">
                 {visiblePosts.map((post) => (
                   <button key={post.id} className={`post-row ${post.id === selected.id ? "selected" : ""}`} onClick={() => choosePost(post)}>
@@ -366,6 +496,11 @@ export default function Home() {
                 ))}
                 {visiblePosts.length === 0 && <div className="empty-state">没有找到，换个关键词试试。</div>}
               </div>
+              {visiblePosts.length < filteredPosts.length && (
+                <button className="load-more-button" onClick={() => setVisibleLimit((limit) => limit + 120)}>
+                  再加载 120 条
+                </button>
+              )}
               {loadError && <p className="inline-notice">{loadError}</p>}
             </section>
           ) : (
@@ -428,13 +563,14 @@ export default function Home() {
           <section className="control-section">
             <SectionHeading number="05" title="检查并下载" subtitle="右侧看到的就是最终图片" />
             <RangeControl label="正文字号" value={`${bodySize}px`} min={14} max={23} current={bodySize} onChange={setBodySize} />
+            <RangeControl label="卡片透明度" value={`${cardOpacity}%`} min={55} max={100} current={cardOpacity} onChange={setCardOpacity} />
           </section>
 
           <section className="control-section caption-section">
-            <SectionHeading number="06" title="准备发布文案和话题" subtitle="自动生成一句文案 + 3 个相关标签" />
+            <SectionHeading number="06" title="准备发布文案和话题" subtitle="独立随机文案 + 3 个相关标签，不截取推文" />
             <textarea value={caption} onChange={(event) => setCaption(event.target.value)} rows={5} placeholder="点击生成发布文案" />
             <div className="caption-actions">
-              <button className="secondary-button" onClick={() => setCaption(makeCaption({ ...selected, text: previewText }))}>生成发布文案</button>
+              <button className="secondary-button" onClick={() => setCaption((current) => makeDifferentCaption({ ...selected, text: previewText }, current))}><Shuffle size={16} /> 随机换一版</button>
               <button className="secondary-button" onClick={copyCaption}><Copy size={16} /> {copyLabel}</button>
             </div>
           </section>
@@ -453,8 +589,14 @@ export default function Home() {
             <div
               ref={artboardRef}
               className={`artboard ${outputMode === "card" ? `card-only theme-${cardTheme}` : ""}`}
-              style={outputMode === "douyin" ? { backgroundImage: `linear-gradient(rgba(0,0,0,${dim / 100}), rgba(0,0,0,${dim / 100})), url("${backgroundSrc}")` } : undefined}
+              style={undefined}
             >
+              {outputMode === "douyin" && (
+                <>
+                  <img className="canvas-background" src={backgroundSrc} alt="" />
+                  <div className="canvas-dim" style={{ background: `rgba(0,0,0,${dim / 100})` }} />
+                </>
+              )}
               <TweetCard
                 ref={tweetCardRef}
                 post={selected}
@@ -462,6 +604,7 @@ export default function Home() {
                 fontSize={effectiveBodySize}
                 theme={cardTheme}
                 metricVariant={metricVariant}
+                opacity={cardOpacity}
                 className={outputMode === "douyin" ? "movable-card" : ""}
                 style={outputMode === "douyin" ? {
                   left: "50%",
@@ -517,6 +660,7 @@ const TweetCard = forwardRef(function TweetCard({
   fontSize,
   theme,
   metricVariant,
+  opacity,
   className,
   style,
   onPointerDown,
@@ -529,6 +673,7 @@ const TweetCard = forwardRef(function TweetCard({
   fontSize: number;
   theme: "light" | "dark";
   metricVariant: number;
+  opacity: number;
   className?: string;
   style?: CSSProperties;
   onPointerDown?: (event: ReactPointerEvent<HTMLElement>) => void;
@@ -541,7 +686,11 @@ const TweetCard = forwardRef(function TweetCard({
     <article
       ref={ref}
       className={`tweet-card theme-${theme} ${className || ""}`}
-      style={{ ...style, "--tweet-size": `${fontSize}px` } as CSSProperties}
+      style={{
+        ...style,
+        "--tweet-size": `${fontSize}px`,
+        "--card-alpha": opacity / 100,
+      } as CSSProperties}
       aria-label="推文图片预览"
       onPointerDown={onPointerDown}
       onPointerMove={onPointerMove}

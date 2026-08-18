@@ -711,11 +711,11 @@ const TweetCard = forwardRef(function TweetCard({
       </div>
       <div className="tweet-time">下午12:46 · {displayLongDate(post.date)} · <strong>{metrics.views}</strong>&nbsp;查看</div>
       <footer className="tweet-metrics">
-        <span><MessageCircle />{metrics.comments}</span>
-        <span><Repeat2 />{metrics.reposts}</span>
-        <span><Heart />{metrics.likes}</span>
-        <span><Bookmark />{metrics.bookmarks}</span>
-        <span className="share-action" aria-label="分享"><Share2 /></span>
+        <span><span className="metric-icon"><MessageCircle /></span><span className="metric-value">{metrics.comments}</span></span>
+        <span><span className="metric-icon"><Repeat2 /></span><span className="metric-value">{metrics.reposts}</span></span>
+        <span><span className="metric-icon"><Heart /></span><span className="metric-value">{metrics.likes}</span></span>
+        <span><span className="metric-icon"><Bookmark /></span><span className="metric-value">{metrics.bookmarks}</span></span>
+        <span className="share-action" aria-label="分享"><span className="metric-icon"><Share2 /></span></span>
       </footer>
     </article>
   );

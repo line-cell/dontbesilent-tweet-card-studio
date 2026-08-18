@@ -11,7 +11,9 @@ import {
   Image as ImageIcon,
   Link2,
   LoaderCircle,
+  Maximize2,
   MessageCircle,
+  Minus,
   MoreHorizontal,
   Moon,
   Move,
@@ -20,6 +22,7 @@ import {
   Search,
   Share2,
   Shuffle,
+  Plus,
   Sun,
   Upload,
 } from "lucide-react";
@@ -282,7 +285,7 @@ export default function Home() {
   const [remoteBackground, setRemoteBackground] = useState("");
   const [customBackground, setCustomBackground] = useState<string | null>(null);
   const [dim, setDim] = useState(16);
-  const [cardScale, setCardScale] = useState(90);
+  const [cardScale, setCardScale] = useState(100);
   const [bodySize, setBodySize] = useState(18);
   const [cardOpacity, setCardOpacity] = useState(100);
   const [position, setPosition] = useState({ x: 0, y: 0 });
@@ -403,6 +406,14 @@ export default function Home() {
 
   function stopDrag() {
     dragRef.current.active = false;
+  }
+
+  function fitCardToCanvas() {
+    const canvasWidth = artboardRef.current?.clientWidth;
+    const cardWidth = tweetCardRef.current?.offsetWidth;
+    if (!canvasWidth || !cardWidth) return;
+    setCardScale(Math.min(140, Math.max(45, Math.round(((canvasWidth - 48) / cardWidth) * 100))));
+    setPosition({ x: 0, y: 0 });
   }
 
   async function copyCaption() {
@@ -554,7 +565,7 @@ export default function Home() {
                 <button onClick={applyRemoteBackground}>使用</button>
               </div>
               <RangeControl label="背景压暗" value={`${dim}%`} min={0} max={55} current={dim} onChange={setDim} />
-              <RangeControl label="卡片大小" value={`${cardScale}%`} min={70} max={108} current={cardScale} onChange={setCardScale} />
+              <CardScaleControl current={cardScale} onChange={setCardScale} onFit={fitCardToCanvas} />
               <div className="drag-help"><Move size={16} /> 在右侧拖动卡片调整位置 <button onClick={() => setPosition({ x: 0, y: 0 })}><RefreshCw size={14} /> 居中重置</button></div>
             </section>
           )}
@@ -650,6 +661,25 @@ function RangeControl({ label, value, min, max, current, onChange }: { label: st
       <span>{label}<strong>{value}</strong></span>
       <input type="range" min={min} max={max} value={current} onChange={(event) => onChange(Number(event.target.value))} aria-label={`${label} ${value}`} />
     </label>
+  );
+}
+
+function CardScaleControl({ current, onChange, onFit }: { current: number; onChange: (value: number) => void; onFit: () => void }) {
+  const update = (value: number) => onChange(Math.min(140, Math.max(45, value)));
+  return (
+    <div className="range-control scale-control">
+      <span>卡片大小<strong>{current}%</strong></span>
+      <div className="scale-adjuster">
+        <button title="缩小 5%" aria-label="缩小卡片" onClick={() => update(current - 5)}><Minus size={15} /></button>
+        <input type="range" min={45} max={140} value={current} onChange={(event) => update(Number(event.target.value))} aria-label={`卡片大小 ${current}%`} />
+        <label className="scale-number">
+          <input type="number" min={45} max={140} value={current} onChange={(event) => update(Number(event.target.value))} aria-label="输入卡片大小" />
+          <span>%</span>
+        </label>
+        <button title="放大 5%" aria-label="放大卡片" onClick={() => update(current + 5)}><Plus size={15} /></button>
+        <button title="接近画布满宽" aria-label="卡片接近满宽" onClick={onFit}><Maximize2 size={15} /></button>
+      </div>
+    </div>
   );
 }
 

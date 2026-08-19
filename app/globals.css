@@ -176,7 +176,6 @@ button { color: inherit; }
 .artboard.card-only.theme-dark { background: #151515; }
 .canvas-background { position: absolute; inset: 0; width: 100%; height: 100%; display: block; object-fit: cover; }
 .canvas-dim { position: absolute; inset: 0; pointer-events: none; }
-.canvas-signature { position: absolute; right: 28px; bottom: 23px; padding: 7px 10px; background: rgba(0,0,0,.74); color: #fff; font-family: ui-monospace, SFMono-Regular, Menlo, monospace; font-size: 9px; letter-spacing: 1.2px; }
 
 .tweet-card { width: 560px; max-width: calc(100% - 40px); padding: 17px 22px 14px; background: rgba(0, 0, 0, var(--card-alpha, 1)); color: #e7e9ea; border: 1px solid rgba(47, 51, 54, var(--card-alpha, 1)); box-shadow: 0 16px 42px rgba(0,0,0,.36); font-family: TwitterChirp, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, "PingFang SC", "Hiragino Sans GB", sans-serif; touch-action: none; user-select: none; }
 .tweet-card.theme-light { background: rgba(255, 255, 255, var(--card-alpha, 1)); color: #0f1419; border-color: rgba(239, 243, 244, var(--card-alpha, 1)); box-shadow: 0 14px 38px rgba(15,20,25,.18); }
@@ -255,7 +254,6 @@ button { color: inherit; }
   .card-option-row { grid-template-columns: auto 1fr; }
   .metric-button { grid-column: 2; }
   .tweet-card { width: 560px; max-width: calc(100% - 24px); }
-  .canvas-signature { right: 14px; bottom: 12px; font-size: 6px; }
   .preview-footer { align-items: stretch; flex-direction: column; }
   .preview-footer > div { display: grid; grid-template-columns: 1fr 1fr; }
 }

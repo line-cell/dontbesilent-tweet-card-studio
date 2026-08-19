@@ -714,7 +714,6 @@ export default function Home() {
                   </button>
                 ) : null}
               />
-              {outputMode === "douyin" && <div className="canvas-signature">DONTBESILENT · 商业 / 成长 / AI</div>}
             </div>
           </div>
 

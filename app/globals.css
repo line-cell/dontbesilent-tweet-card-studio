@@ -123,6 +123,7 @@ button { color: inherit; }
 .metric-button:hover { border-color: var(--orange); color: var(--orange); }
 
 .background-grid { display: grid; grid-template-columns: repeat(4, 1fr); gap: 8px; }
+.background-section .filter-summary { margin: -4px 0 9px; }
 .background-grid button { position: relative; aspect-ratio: 1; padding: 0; overflow: hidden; border: 1px solid var(--line); background: #fff; cursor: pointer; }
 .background-grid button.selected { border: 2px solid var(--orange); }
 .background-grid img { width: 100%; height: 100%; object-fit: cover; display: block; }
@@ -176,6 +177,11 @@ button { color: inherit; }
 .tweet-card.theme-dark { background: rgba(0, 0, 0, var(--card-alpha, 1)); color: #e7e9ea; border-color: rgba(47, 51, 54, var(--card-alpha, 1)); }
 .tweet-card.movable-card { position: absolute; cursor: grab; transform-origin: center; }
 .tweet-card.movable-card:active { cursor: grabbing; }
+.card-resize-handle { position: absolute; right: -13px; bottom: -13px; z-index: 3; width: 30px; height: 30px; padding: 0; border: 1px solid rgba(15, 20, 25, .22); border-radius: 4px; background: #fff; color: #0f1419; display: grid; place-items: center; cursor: nwse-resize; box-shadow: 0 8px 20px rgba(0,0,0,.24); touch-action: none; }
+.card-resize-handle:hover { border-color: var(--orange); color: var(--orange); }
+.card-resize-handle:active { cursor: nwse-resize; }
+.theme-dark .card-resize-handle { border-color: rgba(255,255,255,.3); background: #16181c; color: #e7e9ea; }
+.artboard.is-exporting .card-resize-handle { display: none; }
 .tweet-header { display: grid; grid-template-columns: 42px minmax(0,1fr) auto; gap: 11px; align-items: start; }
 .tweet-avatar { width: 42px; height: 42px; border-radius: 50%; overflow: hidden; background: #000; }
 .tweet-avatar img { width: 100%; height: 100%; display: block; object-fit: cover; transform: scale(1.12); }

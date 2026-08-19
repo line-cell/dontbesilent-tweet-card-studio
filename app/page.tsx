@@ -31,6 +31,7 @@ import {
   CSSProperties,
   ForwardedRef,
   PointerEvent as ReactPointerEvent,
+  ReactNode,
   forwardRef,
   useEffect,
   useMemo,
@@ -90,6 +91,15 @@ const FALLBACK_POSTS: Post[] = [
     },
   },
 ];
+
+const POST_PAGE_SIZE = 120;
+const BACKGROUND_PAGE_SIZE = 16;
+const MIN_CARD_SCALE = 45;
+const MAX_CARD_SCALE = 140;
+
+function clampCardScale(value: number) {
+  return Math.min(MAX_CARD_SCALE, Math.max(MIN_CARD_SCALE, value));
+}
 
 const TRAVEL_BACKGROUNDS: Background[] = Array.from({ length: 110 }, (_, index) => {
   const number = String(index + 1).padStart(3, "0");
@@ -285,7 +295,7 @@ export default function Home() {
   const [selectedId, setSelectedId] = useState(FALLBACK_POSTS[0].id);
   const [query, setQuery] = useState("");
   const [activeCategory, setActiveCategory] = useState("all");
-  const [visibleLimit, setVisibleLimit] = useState(120);
+  const [visibleLimit, setVisibleLimit] = useState(POST_PAGE_SIZE);
   const [contentMode, setContentMode] = useState<"archive" | "edit">("archive");
   const [editedText, setEditedText] = useState(FALLBACK_POSTS[0].text);
   const [outputMode, setOutputMode] = useState<"douyin" | "card">("douyin");
@@ -293,6 +303,7 @@ export default function Home() {
   const [metricVariant, setMetricVariant] = useState(0);
   const [selectedBackground, setSelectedBackground] = useState(BACKGROUNDS[0]);
   const [backgroundQuery, setBackgroundQuery] = useState("");
+  const [backgroundVisibleLimit, setBackgroundVisibleLimit] = useState(BACKGROUND_PAGE_SIZE);
   const [remoteBackground, setRemoteBackground] = useState("");
   const [customBackground, setCustomBackground] = useState<string | null>(null);
   const [dim, setDim] = useState(16);
@@ -307,6 +318,7 @@ export default function Home() {
   const artboardRef = useRef<HTMLDivElement>(null);
   const tweetCardRef = useRef<HTMLElement>(null);
   const dragRef = useRef({ active: false, clientX: 0, clientY: 0, x: 0, y: 0 });
+  const resizeRef = useRef({ active: false, clientX: 0, clientY: 0, scale: 100 });
 
   useEffect(() => {
     fetch("/posts.json")
@@ -353,12 +365,16 @@ export default function Home() {
     return filteredPosts.slice(0, visibleLimit);
   }, [filteredPosts, visibleLimit]);
 
-  const visibleBackgrounds = useMemo(() => {
+  const filteredBackgrounds = useMemo(() => {
     const keyword = backgroundQuery.trim().toLowerCase();
     return BACKGROUNDS.filter((item) =>
       `${item.name} ${item.keywords}`.toLowerCase().includes(keyword),
     );
   }, [backgroundQuery]);
+
+  const visibleBackgrounds = useMemo(() => {
+    return filteredBackgrounds.slice(0, backgroundVisibleLimit);
+  }, [filteredBackgrounds, backgroundVisibleLimit]);
 
   const backgroundSrc = customBackground || selectedBackground.src;
   const previewText = contentMode === "edit" ? editedText : selected.text;
@@ -419,11 +435,37 @@ export default function Home() {
     dragRef.current.active = false;
   }
 
+  function startResize(event: ReactPointerEvent<HTMLButtonElement>) {
+    if (outputMode !== "douyin") return;
+    event.preventDefault();
+    event.stopPropagation();
+    event.currentTarget.setPointerCapture(event.pointerId);
+    resizeRef.current = {
+      active: true,
+      clientX: event.clientX,
+      clientY: event.clientY,
+      scale: cardScale,
+    };
+  }
+
+  function moveResize(event: ReactPointerEvent<HTMLButtonElement>) {
+    if (!resizeRef.current.active) return;
+    event.preventDefault();
+    event.stopPropagation();
+    const delta = Math.max(event.clientX - resizeRef.current.clientX, event.clientY - resizeRef.current.clientY);
+    setCardScale(clampCardScale(Math.round(resizeRef.current.scale + delta / 3)));
+  }
+
+  function stopResize(event: ReactPointerEvent<HTMLButtonElement>) {
+    event.stopPropagation();
+    resizeRef.current.active = false;
+  }
+
   function fitCardToCanvas() {
     const canvasWidth = artboardRef.current?.clientWidth;
     const cardWidth = tweetCardRef.current?.offsetWidth;
     if (!canvasWidth || !cardWidth) return;
-    setCardScale(Math.min(140, Math.max(45, Math.round(((canvasWidth - 48) / cardWidth) * 100))));
+    setCardScale(clampCardScale(Math.round(((canvasWidth - 48) / cardWidth) * 100)));
     setPosition({ x: 0, y: 0 });
   }
 
@@ -438,7 +480,10 @@ export default function Home() {
     if (!target) return;
     setIsDownloading(true);
     let restoreImages = () => {};
+    const exportClassTarget = outputMode === "douyin" ? artboardRef.current : null;
     try {
+      exportClassTarget?.classList.add("is-exporting");
+      await new Promise((resolve) => requestAnimationFrame(resolve));
       await document.fonts.ready;
       restoreImages = await inlineImages(target);
       const rect = target.getBoundingClientRect();
@@ -459,6 +504,7 @@ export default function Home() {
       setLoadError("图片导出失败。网络背景可能禁止下载，请改用内置图片或本地上传。 ");
     } finally {
       restoreImages();
+      exportClassTarget?.classList.remove("is-exporting");
       setIsDownloading(false);
     }
   }
@@ -492,7 +538,7 @@ export default function Home() {
               <div className="search-row">
                 <label className="search-box">
                   <Search size={17} />
-                  <input value={query} onChange={(event) => { setQuery(event.target.value); setVisibleLimit(120); }} placeholder="例如：创业、AI、自媒体" />
+                  <input value={query} onChange={(event) => { setQuery(event.target.value); setVisibleLimit(POST_PAGE_SIZE); }} placeholder="例如：创业、AI、自媒体" />
                 </label>
                 <button className="icon-button" title="随机换一条" aria-label="随机换一条" onClick={chooseRandomPost}><Shuffle size={18} /></button>
               </div>
@@ -501,7 +547,7 @@ export default function Home() {
                   <button
                     key={category.id}
                     className={activeCategory === category.id ? "active" : ""}
-                    onClick={() => { setActiveCategory(category.id); setVisibleLimit(120); }}
+                    onClick={() => { setActiveCategory(category.id); setVisibleLimit(POST_PAGE_SIZE); }}
                   >
                     {category.label}<small>{categoryCounts[category.id] || 0}</small>
                   </button>
@@ -518,8 +564,8 @@ export default function Home() {
                 {visiblePosts.length === 0 && <div className="empty-state">没有找到，换个关键词试试。</div>}
               </div>
               {visiblePosts.length < filteredPosts.length && (
-                <button className="load-more-button" onClick={() => setVisibleLimit((limit) => limit + 120)}>
-                  再加载 120 条
+                <button className="load-more-button" onClick={() => setVisibleLimit((limit) => limit + POST_PAGE_SIZE)}>
+                  再加载 {POST_PAGE_SIZE} 条
                 </button>
               )}
               {loadError && <p className="inline-notice">{loadError}</p>}
@@ -561,8 +607,16 @@ export default function Home() {
               />
               <label className="search-box full">
                 <Search size={17} />
-                <input value={backgroundQuery} onChange={(event) => setBackgroundQuery(event.target.value)} placeholder="搜：城市、夜景、山海" />
+                <input
+                  value={backgroundQuery}
+                  onChange={(event) => {
+                    setBackgroundQuery(event.target.value);
+                    setBackgroundVisibleLimit(BACKGROUND_PAGE_SIZE);
+                  }}
+                  placeholder="搜：城市、夜景、山海"
+                />
               </label>
+              <p className="filter-summary">当前显示 {visibleBackgrounds.length} / {filteredBackgrounds.length} 张</p>
               <div className="background-grid">
                 {visibleBackgrounds.map((background) => (
                   <button key={background.id} className={selectedBackground.id === background.id && !customBackground ? "selected" : ""} onClick={() => { setSelectedBackground(background); setCustomBackground(null); }}>
@@ -571,6 +625,11 @@ export default function Home() {
                   </button>
                 ))}
               </div>
+              {visibleBackgrounds.length < filteredBackgrounds.length && (
+                <button className="load-more-button" onClick={() => setBackgroundVisibleLimit((limit) => limit + BACKGROUND_PAGE_SIZE)}>
+                  查看更多背景
+                </button>
+              )}
               <label className="upload-button">
                 <Upload size={17} /> 上传自己的背景
                 <input type="file" accept="image/*" onChange={(event) => handleUpload(event.target.files?.[0])} />
@@ -640,6 +699,20 @@ export default function Home() {
                 onPointerMove={moveDrag}
                 onPointerUp={stopDrag}
                 onPointerCancel={stopDrag}
+                resizeControl={outputMode === "douyin" ? (
+                  <button
+                    type="button"
+                    className="card-resize-handle"
+                    title="拖动调整卡片大小"
+                    aria-label="拖动调整卡片大小"
+                    onPointerDown={startResize}
+                    onPointerMove={moveResize}
+                    onPointerUp={stopResize}
+                    onPointerCancel={stopResize}
+                  >
+                    <Maximize2 size={13} />
+                  </button>
+                ) : null}
               />
               {outputMode === "douyin" && <div className="canvas-signature">DONTBESILENT · 商业 / 成长 / AI</div>}
             </div>
@@ -680,15 +753,15 @@ function RangeControl({ label, value, min, max, current, onChange }: { label: st
 }
 
 function CardScaleControl({ current, onChange, onFit }: { current: number; onChange: (value: number) => void; onFit: () => void }) {
-  const update = (value: number) => onChange(Math.min(140, Math.max(45, value)));
+  const update = (value: number) => onChange(clampCardScale(value));
   return (
     <div className="range-control scale-control">
       <span>卡片大小<strong>{current}%</strong></span>
       <div className="scale-adjuster">
         <button title="缩小 5%" aria-label="缩小卡片" onClick={() => update(current - 5)}><Minus size={15} /></button>
-        <input type="range" min={45} max={140} value={current} onChange={(event) => update(Number(event.target.value))} aria-label={`卡片大小 ${current}%`} />
+        <input type="range" min={MIN_CARD_SCALE} max={MAX_CARD_SCALE} value={current} onChange={(event) => update(Number(event.target.value))} aria-label={`卡片大小 ${current}%`} />
         <label className="scale-number">
-          <input type="number" min={45} max={140} value={current} onChange={(event) => update(Number(event.target.value))} aria-label="输入卡片大小" />
+          <input type="number" min={MIN_CARD_SCALE} max={MAX_CARD_SCALE} value={current} onChange={(event) => update(Number(event.target.value))} aria-label="输入卡片大小" />
           <span>%</span>
         </label>
         <button title="放大 5%" aria-label="放大卡片" onClick={() => update(current + 5)}><Plus size={15} /></button>
@@ -711,6 +784,7 @@ const TweetCard = forwardRef(function TweetCard({
   onPointerMove,
   onPointerUp,
   onPointerCancel,
+  resizeControl,
 }: {
   post: Post;
   text: string;
@@ -724,6 +798,7 @@ const TweetCard = forwardRef(function TweetCard({
   onPointerMove?: (event: ReactPointerEvent<HTMLElement>) => void;
   onPointerUp?: () => void;
   onPointerCancel?: () => void;
+  resizeControl?: ReactNode;
 }, ref: ForwardedRef<HTMLElement>) {
   const metrics = syntheticMetrics(post, metricVariant);
   return (
@@ -762,6 +837,7 @@ const TweetCard = forwardRef(function TweetCard({
         <span><span className="metric-icon"><Bookmark /></span><span className="metric-value">{metrics.bookmarks}</span></span>
         <span className="share-action" aria-label="分享"><span className="metric-icon"><Share2 /></span></span>
       </footer>
+      {resizeControl}
     </article>
   );
 });

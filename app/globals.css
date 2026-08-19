@@ -161,6 +161,7 @@ button { color: inherit; }
 .caption-actions { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; margin-top: 9px; }
 .secondary-button { min-height: 40px; padding: 0 13px; border: 1px solid var(--line); border-radius: 8px; background: var(--surface); display: inline-flex; align-items: center; justify-content: center; gap: 7px; cursor: pointer; font-size: 12px; font-weight: 700; box-shadow: inset 0 1px rgba(255,255,255,.72); }
 .secondary-button:hover { border-color: #b9c0ca; background: #f5f7f8; }
+.secondary-button:disabled { opacity: .65; cursor: wait; }
 
 .preview-panel { position: sticky; top: 14px; min-width: 0; border: 1px solid rgba(217, 222, 229, .92); border-left: 0; border-radius: 0 0 8px 0; background: rgba(255, 254, 253, .94); box-shadow: var(--shadow-soft); }
 .preview-toolbar { min-height: 50px; padding: 0 18px; border-bottom: 1px solid var(--line); display: flex; align-items: center; justify-content: space-between; gap: 16px; font-size: 12px; }

@@ -2,10 +2,11 @@ import fs from "node:fs";
 import path from "node:path";
 
 const webRoot = path.resolve(import.meta.dirname, "..");
-const sourcePath = path.resolve(
-  webRoot,
-  "../../../../dontbesilent-开源推文集.md",
-);
+const sourceArg = process.argv[2];
+if (!sourceArg) {
+  throw new Error("Usage: npm run data:build -- path/to/source-tweets.md");
+}
+const sourcePath = path.resolve(process.cwd(), sourceArg);
 const samplePath = path.resolve(webRoot, "../data/posts.json");
 const outputPath = path.resolve(webRoot, "public/posts.json");
 

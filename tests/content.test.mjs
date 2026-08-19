@@ -13,6 +13,17 @@ test("the searchable archive contains complete source records", () => {
   assert.ok(posts.every((post) => /^https:\/\/x\.com\/[^/]+\/status\/\d+$/.test(post.sourceUrl)));
 });
 
+test("offline caption pool is large and short enough for random reuse", () => {
+  const captions = JSON.parse(fs.readFileSync(path.join(root, "public/captions.json"), "utf8"));
+
+  assert.ok(captions.length >= 300);
+  assert.equal(new Set(captions).size, captions.length);
+  assert.ok(captions.every((caption) => {
+    const length = Array.from(caption).length;
+    return length >= 30 && length <= 40;
+  }));
+});
+
 test("all built-in visual assets are present", () => {
   const assets = [
     "avatar.png",

@@ -23,6 +23,7 @@ import {
   Share2,
   Shuffle,
   Plus,
+  Sparkles,
   Sun,
   Upload,
 } from "lucide-react";
@@ -133,25 +134,20 @@ const CATEGORIES: Category[] = [
   { id: "market", label: "市场社会", topics: ["市场与社会"] },
 ];
 
-const CAPTION_LEADS = [
-  "有些答案并不复杂，真正难的是愿不愿意面对。",
-  "把这件事想清楚，很多动作自然就简单了。",
-  "今天留下一条值得反复看的思考。",
-  "人与人真正拉开差距的，往往不是信息本身。",
-  "换一个视角看，原本纠结的问题会清楚很多。",
-  "越是看起来理所当然的事，越值得重新想一遍。",
-  "这段话不一定让人舒服，但可能很有用。",
-  "很多问题不是没有答案，而是答案不符合期待。",
-];
-
-const CAPTION_ENDINGS = [
-  "你怎么看？",
-  "先记下来，过一段时间再回来看看。",
-  "分享给同样在认真做事的人。",
-  "真正做过之后，会有不一样的理解。",
-  "评论区聊聊你的判断。",
-  "知易行难，答案最终还在行动里。",
-];
+const CAPTION_FALLBACK = "先把自己的状态稳住，再去处理外界的评价和噪音。";
+const GLOBAL_TAGS = ["创业", "认知", "自媒体", "认知觉醒", "商业思维", "成长", "执行力", "赚钱思维", "内容创作"];
+const TOPIC_TAGS: Record<string, string[]> = {
+  "商业与产品": ["创业", "商业思维", "赚钱思维", "产品思维", "生意"],
+  "产品与商业": ["创业", "商业思维", "产品思维", "变现", "生意"],
+  "AI 与工具": ["AI", "效率", "工具", "创业", "内容创作"],
+  "内容与传播": ["自媒体", "内容创作", "流量", "创业", "商业思维"],
+  "认知与语言": ["认知", "认知觉醒", "表达", "成长", "思维"],
+  "哲学与认知": ["认知", "认知觉醒", "思维", "成长", "表达"],
+  "行动与心理": ["执行力", "成长", "内耗", "自我提升", "认知"],
+  "学习与教育": ["成长", "认知", "执行力", "学习", "自我提升"],
+  "个人经历": ["成长", "经历", "认知", "自我提升", "记录"],
+  "市场与社会": ["商业观察", "趋势", "认知", "创业", "社会"],
+};
 
 function XLogo({ size = 20 }: { size?: number }) {
   return (
@@ -222,24 +218,40 @@ function safeFileName(post: Post) {
   return `dontbesilent-${post.date}-${post.id.slice(-6)}.png`;
 }
 
-function makeCaption(post: Post, variant = 0) {
-  const lead = CAPTION_LEADS[seededNumber(`${post.id}:caption-lead:${variant}`, 0, CAPTION_LEADS.length - 1)];
-  const ending = CAPTION_ENDINGS[seededNumber(`${post.id}:caption-ending:${variant}`, 0, CAPTION_ENDINGS.length - 1)];
-  const tags = [...new Set([post.topic, ...post.tags])].slice(0, 3);
-  return `${lead}\n\n${ending}\n\n${tags.map((tag) => `#${tag.replace(/\s+/g, "")}`).join(" ")}`;
+function pickCaption(pool: string[], fallback = CAPTION_FALLBACK) {
+  if (pool.length === 0) return fallback;
+  const filtered = pool.filter((caption) => caption !== fallback);
+  const source = filtered.length > 0 ? filtered : pool;
+  return source[Math.floor(Math.random() * source.length)] || fallback;
 }
 
-function makeRandomCaption(post: Post) {
-  return makeCaption(post, Date.now() + Math.random());
-}
-
-function makeDifferentCaption(post: Post, current: string) {
-  const seed = Date.now();
-  for (let offset = 0; offset < 12; offset += 1) {
-    const candidate = makeCaption(post, seed + offset);
-    if (candidate !== current) return candidate;
+function buildHashtags(topic: string, tags: string[]) {
+  const merged: string[] = [];
+  const sources = [...tags, ...(TOPIC_TAGS[topic] || []), ...GLOBAL_TAGS];
+  for (const source of sources) {
+    const cleaned = cleanTag(source);
+    if (!cleaned || merged.includes(cleaned)) continue;
+    merged.push(cleaned);
+    if (merged.length >= 5) break;
   }
-  return makeCaption(post, seed + 37);
+  while (merged.length < 3) {
+    const cleaned = cleanTag(GLOBAL_TAGS[merged.length] || "认知");
+    if (!merged.includes(cleaned)) merged.push(cleaned);
+  }
+  return merged.slice(0, 5);
+}
+
+function cleanTag(value: string) {
+  return value
+    .replace(/^#+/, "")
+    .replace(/\s+/g, "")
+    .replace(/[^\p{L}\p{N}_]/gu, "")
+    .slice(0, 12);
+}
+
+function composeCaption(text: string, topic: string, tags: string[]) {
+  const hashtags = buildHashtags(topic, tags);
+  return `${text.trim()}\n\n${hashtags.map((tag) => `#${tag}`).join(" ")}`;
 }
 
 function postMatchesCategory(post: Post, categoryId: string) {
@@ -293,6 +305,7 @@ async function inlineImages(target: HTMLElement) {
 export default function Home() {
   const [posts, setPosts] = useState<Post[]>(FALLBACK_POSTS);
   const [selectedId, setSelectedId] = useState(FALLBACK_POSTS[0].id);
+  const [captionPool, setCaptionPool] = useState<string[]>([]);
   const [query, setQuery] = useState("");
   const [activeCategory, setActiveCategory] = useState("all");
   const [visibleLimit, setVisibleLimit] = useState(POST_PAGE_SIZE);
@@ -311,8 +324,10 @@ export default function Home() {
   const [bodySize, setBodySize] = useState(18);
   const [cardOpacity, setCardOpacity] = useState(100);
   const [position, setPosition] = useState({ x: 0, y: 0 });
-  const [caption, setCaption] = useState(makeCaption(FALLBACK_POSTS[0]));
+  const [caption, setCaption] = useState(CAPTION_FALLBACK);
   const [copyLabel, setCopyLabel] = useState("一键复制");
+  const [isGeneratingCaption, setIsGeneratingCaption] = useState(false);
+  const [captionError, setCaptionError] = useState("");
   const [isDownloading, setIsDownloading] = useState(false);
   const [loadError, setLoadError] = useState("");
   const artboardRef = useRef<HTMLDivElement>(null);
@@ -331,9 +346,32 @@ export default function Home() {
         setPosts(data);
         setSelectedId(data[0].id);
         setEditedText(data[0].text);
-        setCaption(makeRandomCaption(data[0]));
       })
       .catch(() => setLoadError("正在使用内置示例，刷新后可重试。"));
+  }, []);
+
+  useEffect(() => {
+    fetch("/captions.json")
+      .then((response) => {
+        if (!response.ok) throw new Error("文案池读取失败");
+        return response.json();
+      })
+      .then((data: string[]) => {
+        if (!Array.isArray(data) || data.length === 0) return;
+        const normalized = data
+          .filter((item): item is string => typeof item === "string")
+          .map((item) => item.trim())
+          .filter((item) => {
+            const length = Array.from(item).length;
+            return length >= 30 && length <= 40;
+          });
+        if (normalized.length === 0) return;
+        setCaptionPool(normalized);
+        setCaption(composeCaption(pickCaption(normalized), FALLBACK_POSTS[0].topic, FALLBACK_POSTS[0].tags));
+      })
+      .catch(() => {
+        setCaptionPool([]);
+      });
   }, []);
 
   const selected = useMemo(
@@ -386,7 +424,8 @@ export default function Home() {
   function choosePost(post: Post) {
     setSelectedId(post.id);
     setEditedText(post.text);
-    setCaption(makeRandomCaption(post));
+    setCaption(composeCaption(pickCaption(captionPool, caption), post.topic, post.tags));
+    setCaptionError("");
     setPosition({ x: 0, y: 0 });
   }
 
@@ -473,6 +512,20 @@ export default function Home() {
     await navigator.clipboard.writeText(caption);
     setCopyLabel("已复制");
     window.setTimeout(() => setCopyLabel("一键复制"), 1600);
+  }
+
+  async function generateCaption() {
+    if (isGeneratingCaption) return;
+    setIsGeneratingCaption(true);
+    setCaptionError("");
+    try {
+      const next = pickCaption(captionPool, caption);
+      setCaption(composeCaption(next, selected.topic, selected.tags));
+    } catch (error) {
+      setCaptionError(error instanceof Error ? error.message : "文案生成失败，请稍后再试。");
+    } finally {
+      setIsGeneratingCaption(false);
+    }
   }
 
   async function downloadImage() {
@@ -651,12 +704,16 @@ export default function Home() {
           </section>
 
           <section className="control-section caption-section">
-            <SectionHeading number="06" title="准备发布文案和话题" subtitle="独立随机文案 + 3 个相关标签，不截取推文" />
-            <textarea value={caption} onChange={(event) => setCaption(event.target.value)} rows={5} placeholder="点击生成发布文案" />
+            <SectionHeading number="06" title="准备发布文案和话题" subtitle="本地文案池生成，标签最多 5 个" />
+            <textarea value={caption} onChange={(event) => { setCaption(event.target.value); setCaptionError(""); }} rows={6} placeholder="点击重新生成文案" />
             <div className="caption-actions">
-              <button className="secondary-button" onClick={() => setCaption((current) => makeDifferentCaption({ ...selected, text: previewText }, current))}><Shuffle size={16} /> 随机换一版</button>
+              <button className="secondary-button" onClick={generateCaption} disabled={isGeneratingCaption}>
+                {isGeneratingCaption ? <LoaderCircle className="spin" size={16} /> : <Sparkles size={16} />}
+                {isGeneratingCaption ? "正在生成" : "重新生成文案"}
+              </button>
               <button className="secondary-button" onClick={copyCaption}><Copy size={16} /> {copyLabel}</button>
             </div>
+            {captionError && <p className="inline-notice">{captionError} 当前保留上一版文案。</p>}
           </section>
         </aside>
 
